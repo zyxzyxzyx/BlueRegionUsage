@@ -1,5 +1,5 @@
-# ===== 用户私有配置（含 API Key，严禁提交）=====
-config.js
+# ===== 用户私有配置（含 API Key，严禁提交；仅锚定 panel 根下的 config.js，勿误伤 js/config.js 核心模块）=====
+/panel/config.js
 .env
 .env.*
 !.env.example
