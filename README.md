@@ -4,6 +4,16 @@
 
 整套方案**不新增任何基础设施**——复用 API 网关 + 函数服务 + 监控数据链路即可跑通。
 
+## 快速开始
+
+1. 下载或克隆本仓库；
+2. **双击打开 [`panel/index.html`](panel/index.html)——这就是看板入口**，纯静态页面，无需构建、无需启动任何服务；
+3. 首次打开会进入引导视图，填入你的**网关地址**（`gatewayBaseUrl`）和**个人 API Key**，勾选「记住配置」即进入看板；
+   - 也可以预先复制 `panel/config.example.js` 为 `panel/config.js` 并填写同样两项，之后双击 `index.html` 直达看板；
+   - `panel/config.js` 含你的私有凭证，已被 `.gitignore` 忽略，请勿提交或截图分享。
+
+> 提示：通过 `http://` 打开页面时 API Key 会以明文随请求传输，建议使用 `file://` 直接双击或 `https://` 托管访问。
+
 ## 为什么做这个项目
 
 OpenAI、Anthropic 等大厂的用量查询均要求管理级 Key（Admin Key），普通推理 Key 无法查询自己的用量。"**用自己的 API Key 查自己的用量**"是 OpenRouter、LiteLLM、new-api 等网关验证过的标杆能力，也是个人开发者最朴素的需求。本项目把这套能力以最小成本落地，并开源给生态伙伴共同完善。
@@ -33,7 +43,7 @@ functions/
     ├── vefaas_ops.py
     └── run.sh
 panel/               # 零构建静态可视化面板（原生 JS + ECharts CDN）
-├── index.html       # 引导视图 + 面板视图，双击即用
+├── index.html       # ★ 看板入口：双击打开即用（引导视图 + 面板视图）
 ├── config.js        # 用户私有配置（gitignore，由 config.example.js 复制而来）
 ├── config.example.js
 ├── css/  js/
