@@ -1,0 +1,25 @@
+# ===== 用户私有配置（含 API Key，严禁提交）=====
+config.js
+.env
+.env.*
+!.env.example
+
+# ===== 数据与产物 =====
+*.db
+*.sqlite
+deploy.zip
+*.log
+release/
+
+# ===== 非开源范围的函数与交接文档（models 与具体模型目录/计量系数耦合，echo 为一次性探针，HANDOFF 为会话交接）=====
+functions/models/
+functions/echo/
+HANDOFF.md
+
+# ===== Python =====
+__pycache__/
+*.pyc
+
+# ===== 系统 =====
+.DS_Store
+Thumbs.db
