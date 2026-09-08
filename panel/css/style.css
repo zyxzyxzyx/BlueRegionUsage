@@ -10,6 +10,9 @@
   --danger: #e5484d;
   --warn-bg: #fff7e0;
   --warn-text: #8a6116;
+  --quota-track-bg: #4c9aff;
+  --quota-fill: #36cfc9;
+  --quota-over: #f5a623;
   --shadow: 0 1px 3px rgba(0,0,0,.08);
   --skeleton: #e9ecef;
 }
@@ -25,6 +28,9 @@
   --danger: #f2555a;
   --warn-bg: #3a3220;
   --warn-text: #e8c273;
+  --quota-track-bg: #4c9aff;
+  --quota-fill: #36cfc9;
+  --quota-over: #e8892c;
   --shadow: 0 1px 3px rgba(0,0,0,.4);
   --skeleton: #2c3038;
 }
@@ -262,6 +268,12 @@ body {
 .delta-down { color: #2ea043; }
 .delta-flat { color: var(--text-secondary); }
 
+/* Credit 卡剩余额度子行：未超绿 / 超出红 */
+.kpi-remain { min-height: 16px; margin-top: 6px; font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kpi-remain-ok { color: #2ea043; }
+.kpi-remain-over { color: var(--danger); }
+.kpi-credit-limit { font-size: 14px; font-weight: 500; color: var(--text-secondary); margin-left: 2px; }
+
 /* 图表卡片 */
 .card {
   position: relative;
@@ -345,6 +357,28 @@ body {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
 }
+
+/* ---------- 本月 Credit 进度条（月均 pacing） ---------- */
+.quota-card { margin-bottom: 12px; }
+.quota-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.quota-head .card-title { margin: 0; }
+.quota-sub { font-weight: 400; font-size: 12px; color: var(--text-secondary); margin-left: 6px; }
+.quota-hint { font-size: 13px; color: var(--warn-text); background: var(--warn-bg); border: 1px solid var(--warn-text); border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; }
+.quota-form { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: var(--bg); }
+.quota-form-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.quota-form-row label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-secondary); }
+.quota-form-row input { width: 150px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--card-bg); color: var(--text); font-size: 14px; font-variant-numeric: tabular-nums; }
+.quota-form-row input:focus { outline: none; border-color: var(--accent); }
+.quota-form-actions { display: flex; gap: 8px; margin-top: 10px; }
+.quota-form-msg { font-size: 12px; color: var(--danger); margin-top: 8px; }
+.quota-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; font-variant-numeric: tabular-nums; }
+.quota-track { height: 14px; background: var(--quota-track-bg); border-radius: 7px; overflow: hidden; }
+.quota-fill { height: 100%; width: 0; border-radius: 7px; background: var(--quota-fill); transition: width .35s ease; }
+.quota-fill.over { background: var(--quota-over); animation: quota-blink 1s ease-in-out infinite; }
+.quota-note { margin-top: 8px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.quota-note-ok { color: #2ea043; }
+.quota-note-over { color: var(--quota-over); font-weight: 600; }
+@keyframes quota-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
 
 /* ---------- 可用模型目录（表格：模型 ID + Credit 系数，三对列紧凑排布） ---------- */
 .card-catalog { margin-bottom: 12px; }

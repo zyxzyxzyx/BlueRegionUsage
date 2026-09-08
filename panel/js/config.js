@@ -10,7 +10,10 @@
   var DEFAULTS = {
     trendDays: 14,
     theme: 'auto',
-    numberStyle: 'wan'
+    numberStyle: 'wan',
+    dailyCreditLimit: null,
+    weeklyCreditLimit: null,
+    monthlyCreditLimit: null
   };
 
   /** 读取 localStorage 中的覆盖配置（无则返回 null） */
@@ -30,7 +33,8 @@
     var fileCfg = (typeof window.APP_CONFIG === 'object' && window.APP_CONFIG) || {};
     var localCfg = readLocal() || {};
     var merged = {};
-    var keys = ['gatewayBaseUrl', 'apiKey', 'trendDays', 'theme', 'numberStyle'];
+    var keys = ['gatewayBaseUrl', 'apiKey', 'trendDays', 'theme', 'numberStyle',
+      'dailyCreditLimit', 'weeklyCreditLimit', 'monthlyCreditLimit'];
     keys.forEach(function (k) {
       if (localCfg[k] !== undefined && localCfg[k] !== null && localCfg[k] !== '') merged[k] = localCfg[k];
       else if (fileCfg[k] !== undefined && fileCfg[k] !== null && fileCfg[k] !== '') merged[k] = fileCfg[k];
@@ -77,6 +81,14 @@
       errors.push('numberStyle 只能是 wan / intl');
     }
 
+    // 限额类字段：空表示不限，否则必须是非负数字
+    ['dailyCreditLimit', 'weeklyCreditLimit', 'monthlyCreditLimit'].forEach(function (k) {
+      var raw = cfg[k];
+      if (raw === undefined || raw === null || raw === '') return;
+      var n = Number(raw);
+      if (!isFinite(n) || n < 0) errors.push(k + ' 必须是非负数字');
+    });
+
     return { ok: errors.length === 0, errors: errors, cfg: cfg };
   }
 
@@ -107,6 +119,7 @@
     saveLocal: saveLocal,
     clearLocal: clearLocal,
     hasLocal: hasLocal,
+    readLocal: readLocal,
     DEFAULTS: DEFAULTS
   };
 })();

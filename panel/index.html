@@ -44,6 +44,21 @@
       </span>
     </label>
 
+    <label class="field">
+      <span class="field-label">每日 Credit 限额（可选）</span>
+      <input id="onboard-daily-limit" type="number" min="0" step="0.01" placeholder="留空表示不限">
+    </label>
+
+    <label class="field">
+      <span class="field-label">每周 Credit 限额（可选）</span>
+      <input id="onboard-weekly-limit" type="number" min="0" step="0.01" placeholder="留空表示不限">
+    </label>
+
+    <label class="field">
+      <span class="field-label">每月 Credit 限额（可选）</span>
+      <input id="onboard-monthly-limit" type="number" min="0" step="0.01" placeholder="留空表示不限">
+    </label>
+
     <button id="onboard-test" class="btn btn-primary btn-block">测试连接</button>
     <p class="onboard-tip">也可直接编辑 config.js 后刷新本页</p>
   </div>
@@ -87,6 +102,7 @@
       <div class="kpi-card">
         <div class="kpi-label">Credit 用量（估算）</div>
         <div id="kpi-credit" class="kpi-value">--</div>
+        <div id="kpi-credit-remain" class="kpi-remain"></div>
         <div class="kpi-delta"></div>
       </div>
       <div class="kpi-card">
@@ -124,6 +140,36 @@
         <div id="kpi-ttft" class="kpi-value">--</div>
         <div class="kpi-delta"></div>
       </div>
+    </section>
+
+    <!-- 本月 Credit 进度条：月均 pacing，独立于分页 -->
+    <section id="card-quota" class="card quota-card">
+      <div class="quota-head">
+        <h2 class="card-title">本月 Credit 进度 <span class="quota-sub">（按月均限额 pacing，独立于上方分页）</span></h2>
+        <button id="btn-quota-config" class="btn btn-sm" title="配置每日/每周/每月 Credit 限额">配置限额</button>
+      </div>
+
+      <div id="quota-hint" class="quota-hint hidden">配置每日 / 每周 / 每月限额后，即可按月均速度查看本月平均用量进度</div>
+
+      <div id="quota-form" class="quota-form hidden">
+        <div class="quota-form-row">
+          <label>每日限额
+            <input id="q-daily-limit" type="number" min="0" step="0.01" placeholder="不限"></label>
+          <label>每周限额
+            <input id="q-weekly-limit" type="number" min="0" step="0.01" placeholder="不限"></label>
+          <label>每月限额
+            <input id="q-monthly-limit" type="number" min="0" step="0.01" placeholder="不限"></label>
+        </div>
+        <div class="quota-form-actions">
+          <button id="q-save" class="btn btn-primary btn-sm">保存</button>
+          <button id="q-cancel" class="btn btn-sm">取消</button>
+        </div>
+        <div id="q-msg" class="quota-form-msg hidden"></div>
+      </div>
+
+      <div id="quota-meta" class="quota-meta">--</div>
+      <div class="quota-track"><div id="quota-fill" class="quota-fill"></div></div>
+      <div id="quota-note" class="quota-note">--</div>
     </section>
 
     <!-- 趋势 + 分时 + 分布图 -->
@@ -230,6 +276,15 @@
       <option value="wan">万 / 亿</option>
       <option value="intl">K / M / B</option>
     </select></label>
+
+  <label class="field"><span class="field-label">每日 Credit 限额（可选）</span>
+    <input id="set-daily-limit" type="number" min="0" step="0.01" placeholder="留空表示不限"></label>
+
+  <label class="field"><span class="field-label">每周 Credit 限额（可选）</span>
+    <input id="set-weekly-limit" type="number" min="0" step="0.01" placeholder="留空表示不限"></label>
+
+  <label class="field"><span class="field-label">每月 Credit 限额（可选）</span>
+    <input id="set-monthly-limit" type="number" min="0" step="0.01" placeholder="留空表示不限"></label>
 
   <div id="set-message" class="drawer-message hidden"></div>
 

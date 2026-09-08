@@ -60,7 +60,7 @@
     inFlight: false,
     tableRows: [],          // 明细表当前数据
     tableSort: { key: 'total_tokens', dir: -1 },
-    cache: { trend: null, hourly: null, model: null, provider: null } // 主题切换重建图表用
+    cache: { trend: null, hourly: null, model: null, provider: null, byModelMonth: null } // 主题切换重建图表用
   };
 
   // ---------- DOM 工具 ----------
@@ -209,16 +209,184 @@
     return c !== null ? (r.total_tokens || 0) * c / 1e6 : null;
   }
 
-  /** Credit 估算用量卡：Σ 各模型逐日分段用量；目录未提供系数时降级 -- */
-  function renderCreditKpi(list) {
+  /** 列表内 ∑ 各模型逐日分段 Credit 估算用量；无任何有效系数返回 null（展示 --） */
+  function sumCredit(list) {
     var sum = 0, has = false;
     (list || []).forEach(function (r) {
       var v = modelCreditUsage(r);
       if (v !== null) { has = true; sum += v; }
     });
+    return has ? sum : null;
+  }
+
+  /** 归一化限额配置：空/非法/负数 -> null（未配置） */
+  function toNum(v) {
+    if (v === undefined || v === null || v === '') return null;
+    var n = Number(v);
+    return (!isFinite(n) || n < 0) ? null : n;
+  }
+
+  /** 限额紧凑显示：整数不带小数点，其余最多 2 位小数（如 500 -> "500"、0.5 -> "0.5"） */
+  function compactCredit(v) {
+    var n = Number(v);
+    if (!isFinite(n)) return '';
+    return n.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  var LIMIT_LABELS = { today: '每日限额', week: '每周限额', month: '每月限额' };
+  var LIMIT_KEYS = { today: 'dailyCreditLimit', week: 'weeklyCreditLimit', month: 'monthlyCreditLimit' };
+
+  /** 当前分页对应的 Credit 限额（未配置返回 null） */
+  function periodLimit() {
+    return toNum((state.cfg || {})[LIMIT_KEYS[state.period]]);
+  }
+
+  /** Credit 估算用量卡：Σ 各模型逐日分段用量；目录未提供系数时降级 -- */
+  function renderCreditKpi(list) {
+    var sum = sumCredit(list);
     var el = $('kpi-credit');
-    el.textContent = has ? F.credit(sum) : '--';
-    el.title = has ? 'Σ 逐日（模型总Tokens × 当日生效 Credit 系数）÷ 1,000,000（估算）' : '模型目录未返回 Credit 系数';
+    var valText = sum === null ? '--' : F.credit(sum);
+    var limit = periodLimit();
+    if (sum !== null && limit !== null) {
+      el.innerHTML = valText + '<span class="kpi-credit-limit">/' + compactCredit(limit) + '</span>';
+    } else {
+      el.textContent = valText;
+    }
+    el.title = sum === null ? '模型目录未返回 Credit 系数' : 'Σ 逐日（模型总Tokens × 当日生效 Credit 系数）÷ 1,000,000（估算）';
+    renderCreditRemain(sum);
+  }
+
+  /** Credit 卡剩余额度子行：按分页匹配 每日/每周/每月限额，未超过绿、超过红 */
+  function renderCreditRemain(used) {
+    var box = $('kpi-credit-remain');
+    if (!box) return;
+    var limit = periodLimit();
+    var label = LIMIT_LABELS[state.period] || '限额';
+    box.className = 'kpi-remain';
+    if (limit === null || used === null) { box.textContent = ''; return; }
+    var diff = limit - used;
+    if (diff >= 0) {
+      box.textContent = '离' + label + '还差 ' + F.credit(diff);
+      box.className = 'kpi-remain kpi-remain-ok';
+    } else {
+      box.textContent = '已超出' + label + ' ' + F.credit(-diff);
+      box.className = 'kpi-remain kpi-remain-over';
+    }
+  }
+
+  /** 本月用量（进度条用）：空列表视为 0；有记录但系数缺失返回 null */
+  function monthCreditOrZero(list) {
+    list = list || [];
+    if (!list.length) return 0;
+    return sumCredit(list);
+  }
+
+  /**
+   * 本月 Credit 进度条（月均 pacing，独立于分页）：
+   * 月均累计可用 = 每月限额 ÷ 本月实际天数 × 本月第几天；
+   * 进度 = 本月实际用量 ÷ 月均累计可用；未超淡黄、超出橙色闪烁。
+   */
+  function renderQuotaBar(monthList) {
+    var monthly = toNum((state.cfg || {}).monthlyCreditLimit);
+    var used = monthCreditOrZero(monthList);
+    var meta = $('quota-meta'), note = $('quota-note'), fill = $('quota-fill');
+    var hint = $('quota-hint');
+    if (!meta || !fill) return;
+
+    if (monthly === null) {
+      if (hint) show(hint);
+      meta.textContent = '尚未配置每月 Credit 限额';
+      note.textContent = '';
+      note.className = 'quota-note';
+      fill.style.width = '0';
+      fill.className = 'quota-fill';
+      return;
+    }
+    if (hint) hide(hint);
+
+    if (used === null) {
+      meta.textContent = '本月有调用记录，但模型目录未返回 Credit 系数，无法估算本月用量';
+      note.textContent = '';
+      note.className = 'quota-note';
+      fill.style.width = '0';
+      fill.className = 'quota-fill';
+      return;
+    }
+
+    var now = new Date();
+    var day = now.getDate();
+    var dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var expected = monthly * day / dim;
+    var pct = expected > 0 ? used / expected * 100 : 0;
+    var over = used > expected;
+
+    fill.style.width = Math.min(pct, 100) + '%';
+    fill.className = 'quota-fill' + (over ? ' over' : '');
+    meta.textContent = '本月日均可用累计额 ' + F.credit(expected) + ' Credit(月限额 ' + F.credit(monthly) +
+      '/' + dim + '天 * 本月第 ' + day + ' 天)';
+    if (over) {
+      note.textContent = '已用 ' + F.credit(used) + ' Credit · 已超出日均累计值 ' + (pct - 100).toFixed(1) + '%';
+      note.className = 'quota-note quota-note-over';
+    } else {
+      note.textContent = '已用 ' + F.credit(used) + ' Credit · 已消费日均累计值的 ' + pct.toFixed(1) + '%';
+      note.className = 'quota-note quota-note-ok';
+    }
+  }
+
+  /** 将三类限额写回 state.cfg 并持久化到 localStorage（不覆盖 gatewayBaseUrl/apiKey），随后重渲染 */
+  function applyLimits(daily, weekly, monthly) {
+    var cfg = Object.assign({}, state.cfg, {
+      dailyCreditLimit: toNum(daily),
+      weeklyCreditLimit: toNum(weekly),
+      monthlyCreditLimit: toNum(monthly)
+    });
+    state.cfg = cfg;
+    var stored = C.readLocal() || {};
+    C.saveLocal(Object.assign({}, stored, {
+      dailyCreditLimit: cfg.dailyCreditLimit,
+      weeklyCreditLimit: cfg.weeklyCreditLimit,
+      monthlyCreditLimit: cfg.monthlyCreditLimit
+    }));
+    if (state.cache.model) renderCreditKpi(state.cache.model);
+    if (state.cache.byModelMonth) renderQuotaBar(state.cache.byModelMonth);
+  }
+
+  /** 进度条卡片的「配置限额」小菜单：展开三段输入并写入配置 */
+  function initQuotaCard() {
+    var btn = $('btn-quota-config'), form = $('quota-form'), msg = $('q-msg');
+    function closeForm() {
+      hide(form);
+      btn.textContent = '配置限额';
+      if (msg) hide(msg);
+    }
+    btn.addEventListener('click', function () {
+      if (form.classList.contains('hidden')) {
+        var cfg = state.cfg || {};
+        $('q-daily-limit').value = cfg.dailyCreditLimit == null ? '' : cfg.dailyCreditLimit;
+        $('q-weekly-limit').value = cfg.weeklyCreditLimit == null ? '' : cfg.weeklyCreditLimit;
+        $('q-monthly-limit').value = cfg.monthlyCreditLimit == null ? '' : cfg.monthlyCreditLimit;
+        if (msg) hide(msg);
+        show(form);
+        btn.textContent = '收起';
+      } else {
+        closeForm();
+      }
+    });
+    $('q-cancel').addEventListener('click', closeForm);
+    $('q-save').addEventListener('click', function () {
+      var daily = numField($('q-daily-limit'));
+      var weekly = numField($('q-weekly-limit'));
+      var monthly = numField($('q-monthly-limit'));
+      var v = C.validate(Object.assign({}, state.cfg, {
+        dailyCreditLimit: daily, weeklyCreditLimit: weekly, monthlyCreditLimit: monthly
+      }));
+      if (!v.ok) {
+        if (msg) { msg.textContent = v.errors[0]; show(msg); }
+        return;
+      }
+      applyLimits(daily, weekly, monthly);
+      closeForm();
+    });
   }
 
   var KPI_IDS = ['kpi-requests', 'kpi-total-tokens', 'kpi-uncached-tokens', 'kpi-cached-tokens', 'kpi-rsp-tokens', 'kpi-credit', 'kpi-cache-rate', 'kpi-ttft'];
@@ -233,23 +401,29 @@
     });
     if (st !== 'ready') {
       KPI_DELTA_IDS.forEach(function (id) { $(id).textContent = ''; $(id).className = 'kpi-delta'; });
+      var remain = $('kpi-credit-remain');
+      if (remain) { remain.textContent = ''; remain.className = 'kpi-remain'; }
     }
   }
 
   // ---------- 数据编排 ----------
-  /** 统一取数：summary(window) 供 KPI+环比；by-*(window)；performance；daily 供趋势；今日加 hourly 分时 */
+  /** 统一取数：summary(window) 供 KPI+环比；by-*(window)；performance；daily 供趋势；今日加 hourly 分时；非本月额外取 byModel(month) 供月进度条 */
   function fetchAll(cfg) {
     var p = periodParams(state.period);
-    var jobs = [
-      API.summary(cfg, p.window),
-      API.byModel(cfg, p.window),
-      API.byProvider(cfg, p.window),
-      API.performance(cfg, p.hours, 'model'),
-      API.daily(cfg, p.days || cfg.trendDays || 14)
-    ];
-    if (state.period === 'today') jobs.push(API.hourly(cfg));
-    return allSettled(jobs).then(function (r) {
-      return { summary: r[0], byModel: r[1], byProvider: r[2], perf: r[3], daily: r[4], hourly: r[5] || null };
+    var jobs = {
+      summary: API.summary(cfg, p.window),
+      byModel: API.byModel(cfg, p.window),
+      byProvider: API.byProvider(cfg, p.window),
+      perf: API.performance(cfg, p.hours, 'model'),
+      daily: API.daily(cfg, p.days || cfg.trendDays || 14)
+    };
+    if (state.period === 'today') jobs.hourly = API.hourly(cfg);
+    if (state.period !== 'month') jobs.byModelMonth = API.byModel(cfg, 'month');
+    var names = Object.keys(jobs);
+    return allSettled(names.map(function (n) { return jobs[n]; })).then(function (r) {
+      var out = {};
+      names.forEach(function (n, i) { out[n] = r[i]; });
+      return out;
     });
   }
 
@@ -283,7 +457,7 @@
       state.inFlight = false;
 
       // 任一接口 401 → 整页退回引导
-      var results = [res.summary, res.daily, res.byModel, res.byProvider, res.perf, res.hourly].filter(Boolean);
+      var results = [res.summary, res.daily, res.byModel, res.byProvider, res.perf, res.hourly, res.byModelMonth].filter(Boolean);
       var unauthorized = results.some(function (r) {
         return r.status === 'rejected' && r.reason && r.reason.code === 'unauthorized';
       });
@@ -347,6 +521,16 @@
         anyFail = true;
         setCardState($('card-provider'), 'error', res.byProvider.reason && res.byProvider.reason.message);
       }
+
+      // --- 本月累计 Credit 进度条（月均 pacing，独立于分页） ---
+      if (state.period === 'month') {
+        state.cache.byModelMonth = res.byModel.status === 'fulfilled' ? (res.byModel.value.data || []) : null;
+      } else if (res.byModelMonth && res.byModelMonth.status === 'fulfilled') {
+        state.cache.byModelMonth = res.byModelMonth.value.data || [];
+      } else {
+        state.cache.byModelMonth = null;
+      }
+      renderQuotaBar(state.cache.byModelMonth);
 
       // --- 失败 Header 提示 ---
       if (anyFail) {
@@ -656,6 +840,9 @@
         badge.title = '已连接网关，鉴权通过\n消费者：' + (r.consumer || '-') +
           '\n可用模型 ' + r.models.length + ' 个：' + r.modelIds.join('、');
         renderModelCatalog(r.models);
+        // 目录载入后 Credit 系数才可用，补渲染用量卡与月进度条（消除与 by-model 的竞态）
+        if (state.cache.model) renderCreditKpi(state.cache.model);
+        if (state.cache.byModelMonth) renderQuotaBar(state.cache.byModelMonth);
       } else {
         badge.className = 'conn-badge conn-fail';
         label.textContent = '未连接';
@@ -679,7 +866,10 @@
       hide(err);
       var cfg = Object.assign({}, C.DEFAULTS, {
         gatewayBaseUrl: $('onboard-url').value.trim(),
-        apiKey: keyInput.value.trim()
+        apiKey: keyInput.value.trim(),
+        dailyCreditLimit: numField($('onboard-daily-limit')),
+        weeklyCreditLimit: numField($('onboard-weekly-limit')),
+        monthlyCreditLimit: numField($('onboard-monthly-limit'))
       });
       var v = C.validate(cfg);
       if (!v.ok) { err.textContent = v.errors[0]; show(err); return; }
@@ -730,6 +920,9 @@
     $('set-trenddays').value = cfg.trendDays || 14;
     $('set-theme').value = cfg.theme || 'auto';
     $('set-numstyle').value = cfg.numberStyle || 'wan';
+    $('set-daily-limit').value = cfg.dailyCreditLimit == null ? '' : cfg.dailyCreditLimit;
+    $('set-weekly-limit').value = cfg.weeklyCreditLimit == null ? '' : cfg.weeklyCreditLimit;
+    $('set-monthly-limit').value = cfg.monthlyCreditLimit == null ? '' : cfg.monthlyCreditLimit;
     $('set-masked').textContent = cfg.apiKey ? '当前 Key：' + F.maskKey(cfg.apiKey) : '';
     hide($('set-message'));
     show($('drawer-mask'));
@@ -741,13 +934,23 @@
     hide($('drawer'));
   }
 
+  /** 数字输入读取：空串返回 ''（语义=不限），否则返回 Number（负数交由校验层拦截） */
+  function numField(input) {
+    var v = String(input.value || '').trim();
+    if (v === '') return '';
+    return Number(v);
+  }
+
   function drawerCollect() {
     return {
       gatewayBaseUrl: $('set-url').value.trim(),
       apiKey: $('set-key').value.trim(),
       trendDays: Number($('set-trenddays').value),
       theme: $('set-theme').value,
-      numberStyle: $('set-numstyle').value
+      numberStyle: $('set-numstyle').value,
+      dailyCreditLimit: numField($('set-daily-limit')),
+      weeklyCreditLimit: numField($('set-weekly-limit')),
+      monthlyCreditLimit: numField($('set-monthly-limit'))
     };
   }
 
@@ -844,6 +1047,7 @@
 
     initOnboarding();
     initDrawer();
+    initQuotaCard();
     applyTheme(false);
 
     // 配置加载与校验：localStorage > config.js
@@ -855,7 +1059,10 @@
         apiKey: cfg.apiKey.trim(),
         trendDays: cfg.trendDays !== undefined ? Number(cfg.trendDays) : 14,
         theme: cfg.theme || 'auto',
-        numberStyle: cfg.numberStyle || 'wan'
+        numberStyle: cfg.numberStyle || 'wan',
+        dailyCreditLimit: toNum(cfg.dailyCreditLimit),
+        weeklyCreditLimit: toNum(cfg.weeklyCreditLimit),
+        monthlyCreditLimit: toNum(cfg.monthlyCreditLimit)
       };
       enterPanel();
     } else {
