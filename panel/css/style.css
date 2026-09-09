@@ -379,6 +379,10 @@ body {
 .quota-note-ok { color: #2ea043; }
 .quota-note-over { color: var(--quota-over); font-weight: 600; }
 @keyframes quota-blink { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+/* 光敏感 / 减弱动态效果用户：关闭闪烁动画，保留橙色静态告警 */
+@media (prefers-reduced-motion: reduce) {
+  .quota-fill.over { animation: none; }
+}
 
 /* ---------- 可用模型目录（表格：模型 ID + Credit 系数，三对列紧凑排布） ---------- */
 .card-catalog { margin-bottom: 12px; }
