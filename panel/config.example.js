@@ -21,5 +21,15 @@ window.APP_CONFIG = {
   theme: 'auto',
 
   // 大数字缩写风格：wan（万 / 亿，默认）| intl（K / M / B）
-  numberStyle: 'wan'
+  numberStyle: 'wan',
+
+  // 每日 Credit 限额（可选）：今日用量超出该值，Credit 卡红字提示「已超出」。
+  // 留空（null）表示不限；可在网页首次登录或「配置限额」中填写，例如 100。
+  dailyCreditLimit: null,
+
+  // 每周 Credit 限额（可选）：本周用量对应额度。
+  weeklyCreditLimit: null,
+
+  // 每月 Credit 限额（可选）：本月用量对应额度，同时用于「本月进度条」的月均 pacing，例如 3000。
+  monthlyCreditLimit: null
 };
