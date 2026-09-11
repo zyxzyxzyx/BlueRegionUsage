@@ -6,8 +6,6 @@
 
 ## 快速开始
 
-**在线版**：<https://zyxzyxzyx.github.io/BlueRegionUsage/>（GitHub Pages 托管，首次打开同样进入引导视图，填入网关地址与 API Key 即可；网关地址填根地址，不要带 `/compatible` 等路径前缀）。
-
 1. 下载或克隆本仓库；
 2. **双击打开 [`panel/index.html`](panel/index.html)——这就是看板入口**，纯静态页面，无需构建、无需启动任何服务；
 3. 首次打开会进入引导视图，填入你的**网关地址**（`gatewayBaseUrl`）和**个人 API Key**，勾选「记住配置」即进入看板；
@@ -15,6 +13,8 @@
    - `panel/config.js` 含你的私有凭证，已被 `.gitignore` 忽略，请勿提交或截图分享。
 
 > 提示：通过 `http://` 打开页面时 API Key 会以明文随请求传输，建议使用 `file://` 直接双击或 `https://` 托管访问。
+>
+> 网关地址填根地址即可（如 `https://xxx.apigateway-cn-beijing.volceapi.com`），**不要带 `/compatible` 等路径前缀**——本看板的 `/v1/models`、`/v1/usage/*` 挂在网关根路径下；`/compatible` 前缀仅用于 chat/completions 等对话接口。地址带错前缀时网关返回 404（无 CORS 头），浏览器会误报为「网络失败：地址不可达或 CORS 未放行」。
 
 ## 为什么做这个项目
 
