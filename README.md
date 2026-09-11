@@ -6,6 +6,8 @@
 
 ## 快速开始
 
+**在线版**：<https://zyxzyxzyx.github.io/BlueRegionUsage/>（GitHub Pages 托管，首次打开同样进入引导视图，填入网关地址与 API Key 即可）。
+
 1. 下载或克隆本仓库；
 2. **双击打开 [`panel/index.html`](panel/index.html)——这就是看板入口**，纯静态页面，无需构建、无需启动任何服务；
 3. 首次打开会进入引导视图，填入你的**网关地址**（`gatewayBaseUrl`）和**个人 API Key**，勾选「记住配置」即进入看板；
