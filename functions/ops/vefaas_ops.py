@@ -44,7 +44,8 @@ VMP 指标口径 (指标由网关访问日志经日志服务 TLS 定时 SQL 每�
   VEFAAS_PORT           监听端口 (默认 8000)
   OPS_CONSUMER_HEADER   网关注入消费者 ID 的头名 (默认 X-Forward-Consumer, 回退 Authorization)
   VMP_QUERY_URL         VMP 查询地址, 形如 https://<query-host>/workspaces/<id> (非 mock 必填;
-                        内部地址严禁提交入库, 只配在函数侧环境变量)
+                        内部地址严禁提交入库, 只配在函数侧环境变量;
+                        出站前校验: 仅允许 http/https, host 拒绝 localhost/环回/私有/保留地址)
   VMP_BASIC_AUTH_USER   VMP Basic Auth 用户名 (可选, 仅本地开发回退用;
                         生产无需配置: 函数绑定 IAM 角色 (需 VMPQueryAccess 权限)
                         后平台自动注入 X-Faas-Access-Key-Id / -Secret-Access-Key /
@@ -66,9 +67,11 @@ VMP 指标口径 (指标由网关访问日志经日志服务 TLS 定时 SQL 每�
 
 import hashlib
 import hmac
+import ipaddress
 import json
 import os
 import re
+import socket
 import threading
 import time
 import urllib.error
@@ -336,6 +339,38 @@ def _sign_v4_get(full_path, params, creds):
     return f"{parts.scheme}://{host}{full_path}?{qs}", out
 
 
+_VMP_TARGET_OK = set()  # 已通过校验的 (scheme, host), 避免每次请求重复 DNS 解析
+
+
+def _assert_safe_vmp_target(url):
+    """出站请求 SSRF 防护: 仅允许 http/https; host 拒绝 localhost/环回/私有/保留地址"""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme not in ("http", "https"):
+        raise ApiError(502, f"VMP_QUERY_URL 协议仅允许 http/https, 当前: {parts.scheme!r}",
+                       "vmp_unavailable", "upstream_error")
+    host = (parts.hostname or "").lower()
+    if not host:
+        raise ApiError(502, "VMP_QUERY_URL 缺少 host", "vmp_unavailable", "upstream_error")
+    if host == "localhost" or host.endswith(".localhost"):
+        raise ApiError(502, "VMP_QUERY_URL 不允许指向 localhost", "vmp_unavailable", "upstream_error")
+    if (parts.scheme, host) in _VMP_TARGET_OK:
+        return
+    try:
+        resolved = [ipaddress.ip_address(host)]
+    except ValueError:  # 域名: 解析全部 A/AAAA 记录逐一校验
+        try:
+            infos = socket.getaddrinfo(host, None)
+        except OSError as e:
+            raise ApiError(502, f"VMP_QUERY_URL host 解析失败: {e}", "vmp_unavailable", "upstream_error")
+        resolved = [ipaddress.ip_address(i[4][0]) for i in infos]
+    for ip in resolved:
+        if (ip.is_loopback or ip.is_private or ip.is_reserved or ip.is_link_local
+                or ip.is_multicast or ip.is_unspecified):
+            raise ApiError(502, f"VMP_QUERY_URL 指向环回/私有/保留地址 {ip}, 已拒绝 (SSRF 防护)",
+                           "vmp_unavailable", "upstream_error")
+    _VMP_TARGET_OK.add((parts.scheme, host))
+
+
 def _vmp_get(path, params, auth=None):
     """调用 VMP, 返回 data.result; 失败抛 ApiError。网络错误/5xx/429 重试一次
     auth: sts_credentials_from_headers() 的凭证 → V4 签名 (生产路径);
@@ -351,6 +386,7 @@ def _vmp_get(path, params, auth=None):
             token = b64encode(f"{BASIC_USER}:{BASIC_PASS}".encode()).decode()
             vmp_headers["Authorization"] = f"Basic {token}"
     vmp_headers["User-Agent"] = "blueregion-usage/1.1"
+    _assert_safe_vmp_target(url)  # SSRF 防护: 发请求前校验协议与 host
     req = urllib.request.Request(url, headers=vmp_headers)
     last_err = None
     for _ in range(2):

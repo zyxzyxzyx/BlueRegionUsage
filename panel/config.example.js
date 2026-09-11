@@ -9,10 +9,12 @@
 window.APP_CONFIG = {
   // 网关地址（必填）：BlueRegion API 网关基础地址，必须是合法 http(s) URL
   // 示例：'https://gateway.example.com'；本地联调可用 'http://localhost:8765'
-  gatewayBaseUrl: 'http://localhost:8765',
+  // 注意：填网关根地址，不要带 /compatible 等路径前缀（用量接口挂在根路径 /v1/ 下）
+  gatewayBaseUrl: '',
 
   // API Key（必填）：网关签发的个人 Key，请求时以 Bearer 方式携带
-  apiKey: 'api-key-xxxxxxxx',
+  // 出于安全考虑，模板不内置任何示例 Key，请填入你自己的（勿提交 git / 截图分享）
+  apiKey: '',
 
   // 趋势图天数（1-15，默认 14）：仅"今日"周期下，趋势图回看的天数
   trendDays: 14,
