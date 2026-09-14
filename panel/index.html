@@ -240,7 +240,7 @@
     </section>
   </main>
 
-  <footer class="panel-footer">BlueRegion Usage v0.3.1 · 数据口径：输入 Tokens 含缓存命中（OpenAI 规范），未命中/命中分别计量；Credit 用量 = Σ 逐日（当日总 Tokens × 当日生效 Credit 系数）÷ 百万（估算，以实际消耗为准）</footer>
+  <footer class="panel-footer">BlueRegion Usage v0.3.2 · 自动刷新可配置（设置抽屉，页面隐藏时暂停） · 数据口径：输入 Tokens 含缓存命中（OpenAI 规范），未命中/命中分别计量；Credit 用量 = Σ 逐日（当日总 Tokens × 当日生效 Credit 系数）÷ 百万（估算，以实际消耗为准）</footer>
 </section>
 
 <!-- ========== 设置抽屉 ========== -->
@@ -275,6 +275,15 @@
     <select id="set-numstyle">
       <option value="wan">万 / 亿</option>
       <option value="intl">K / M / B</option>
+    </select></label>
+
+  <label class="field"><span class="field-label">自动刷新</span>
+    <select id="set-autorefresh">
+      <option value="0">关闭</option>
+      <option value="1">每 1 分钟</option>
+      <option value="5">每 5 分钟</option>
+      <option value="15">每 15 分钟</option>
+      <option value="30">每 30 分钟</option>
     </select></label>
 
   <label class="field"><span class="field-label">每日 Credit 限额（可选）</span>

@@ -443,6 +443,7 @@
   function loadAll() {
     if (state.inFlight) return Promise.resolve();
     state.inFlight = true;
+    lastLoadAt = Date.now();
     var isToday = state.period === 'today';
     setKpiState('loading');
     setCardState($('card-trend'), 'loading');
@@ -811,6 +812,42 @@
     state.cooldownTimer = setTimeout(tickCooldown, 1000);
   }
 
+  // ---------- 自动刷新 ----------
+  var autoTimer = null;
+  var lastLoadAt = 0;   // 最近一次 loadAll 发起时刻（手动/自动/切周期共用）
+
+  function autoRefreshMs() {
+    var m = state.cfg ? Number(state.cfg.autoRefreshMinutes) : 0;
+    return (isFinite(m) && m > 0) ? m * 60 * 1000 : 0;
+  }
+
+  function autoRefreshTick() {
+    var ms = autoRefreshMs();
+    if (!ms || !lastLoadAt) return;
+    if (document.hidden) return;                                  // 页面隐藏时暂停
+    if ($('view-panel').classList.contains('hidden')) return;     // 已退回引导视图
+    if (Date.now() - lastLoadAt < ms) return;                     // 未到刷新间隔
+    loadAll();
+  }
+
+  /** 按当前配置装填/停用自动刷新定时器（cfg 变化后调用） */
+  function armAutoRefresh() {
+    if (autoTimer) { clearInterval(autoTimer); autoTimer = null; }
+    var btn = $('btn-refresh');
+    var ms = autoRefreshMs();
+    if (ms) {
+      autoTimer = setInterval(autoRefreshTick, 15000); // 15s 粒度轮询，到点触发
+      if (btn) btn.title = '自动刷新已开启（每 ' + (ms / 60000) + ' 分钟）；页面隐藏时暂停，回到前台后若数据过期立即刷新';
+    } else if (btn) {
+      btn.title = '';
+    }
+  }
+
+  // 回到前台：数据已过期则立即补一次刷新
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) autoRefreshTick();
+  });
+
   // ---------- Header 提示 ----------
   function showHeaderNotice(msg, kind) {
     var el = $('header-notice');
@@ -910,6 +947,7 @@
     applyTheme(false);
     refreshConnBadge();
     loadAll();
+    armAutoRefresh();
   }
 
   // ---------- 设置抽屉 ----------
@@ -920,6 +958,7 @@
     $('set-trenddays').value = cfg.trendDays || 14;
     $('set-theme').value = cfg.theme || 'auto';
     $('set-numstyle').value = cfg.numberStyle || 'wan';
+    $('set-autorefresh').value = String(cfg.autoRefreshMinutes != null ? Number(cfg.autoRefreshMinutes) : 5);
     $('set-daily-limit').value = cfg.dailyCreditLimit == null ? '' : cfg.dailyCreditLimit;
     $('set-weekly-limit').value = cfg.weeklyCreditLimit == null ? '' : cfg.weeklyCreditLimit;
     $('set-monthly-limit').value = cfg.monthlyCreditLimit == null ? '' : cfg.monthlyCreditLimit;
@@ -948,6 +987,7 @@
       trendDays: Number($('set-trenddays').value),
       theme: $('set-theme').value,
       numberStyle: $('set-numstyle').value,
+      autoRefreshMinutes: Number($('set-autorefresh').value),
       dailyCreditLimit: numField($('set-daily-limit')),
       weeklyCreditLimit: numField($('set-weekly-limit')),
       monthlyCreditLimit: numField($('set-monthly-limit'))
@@ -1000,6 +1040,7 @@
       state.cfg = cfg;
       applyTheme(true);
       refreshConnBadge();
+      armAutoRefresh();
       drawerMessage('已保存到浏览器 localStorage', true);
       setTimeout(function () { closeDrawer(); loadAll(); }, 600);
     });
@@ -1060,6 +1101,7 @@
         trendDays: cfg.trendDays !== undefined ? Number(cfg.trendDays) : 14,
         theme: cfg.theme || 'auto',
         numberStyle: cfg.numberStyle || 'wan',
+        autoRefreshMinutes: cfg.autoRefreshMinutes != null ? Number(cfg.autoRefreshMinutes) : 5,
         dailyCreditLimit: toNum(cfg.dailyCreditLimit),
         weeklyCreditLimit: toNum(cfg.weeklyCreditLimit),
         monthlyCreditLimit: toNum(cfg.monthlyCreditLimit)

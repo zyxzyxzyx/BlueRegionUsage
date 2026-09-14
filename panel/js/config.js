@@ -13,7 +13,8 @@
     numberStyle: 'wan',
     dailyCreditLimit: null,
     weeklyCreditLimit: null,
-    monthlyCreditLimit: null
+    monthlyCreditLimit: null,
+    autoRefreshMinutes: 5
   };
 
   /** 读取 localStorage 中的覆盖配置（无则返回 null） */
@@ -34,7 +35,7 @@
     var localCfg = readLocal() || {};
     var merged = {};
     var keys = ['gatewayBaseUrl', 'apiKey', 'trendDays', 'theme', 'numberStyle',
-      'dailyCreditLimit', 'weeklyCreditLimit', 'monthlyCreditLimit'];
+      'dailyCreditLimit', 'weeklyCreditLimit', 'monthlyCreditLimit', 'autoRefreshMinutes'];
     keys.forEach(function (k) {
       if (localCfg[k] !== undefined && localCfg[k] !== null && localCfg[k] !== '') merged[k] = localCfg[k];
       else if (fileCfg[k] !== undefined && fileCfg[k] !== null && fileCfg[k] !== '') merged[k] = fileCfg[k];
@@ -88,6 +89,13 @@
       var n = Number(raw);
       if (!isFinite(n) || n < 0) errors.push(k + ' 必须是非负数字');
     });
+
+    // 自动刷新：0 关闭，或 1/5/15/30 分钟
+    if (cfg.autoRefreshMinutes !== undefined && cfg.autoRefreshMinutes !== null && cfg.autoRefreshMinutes !== '') {
+      if ([0, 1, 5, 15, 30].indexOf(Number(cfg.autoRefreshMinutes)) < 0) {
+        errors.push('autoRefreshMinutes 必须是 0 / 1 / 5 / 15 / 30（分钟，0=关闭）');
+      }
+    }
 
     return { ok: errors.length === 0, errors: errors, cfg: cfg };
   }

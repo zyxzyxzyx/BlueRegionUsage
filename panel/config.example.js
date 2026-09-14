@@ -25,6 +25,10 @@ window.APP_CONFIG = {
   // 大数字缩写风格：wan（万 / 亿，默认）| intl（K / M / B）
   numberStyle: 'wan',
 
+  // 自动刷新（分钟）：0 关闭 | 1 | 5 | 15 | 30，默认 5；
+  // 页面隐藏（切走标签页/最小化）时暂停，回到前台后若数据过期立即刷新
+  autoRefreshMinutes: 5,
+
   // 每日 Credit 限额（可选）：今日用量超出该值，Credit 卡红字提示「已超出」。
   // 留空（null）表示不限；可在网页首次登录或「配置限额」中填写，例如 100。
   dailyCreditLimit: null,
