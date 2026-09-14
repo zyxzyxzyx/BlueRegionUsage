@@ -209,13 +209,14 @@
     return c !== null ? (r.total_tokens || 0) * c / 1e6 : null;
   }
 
-  /** 列表内 ∑ 各模型逐日分段 Credit 估算用量；无任何有效系数返回 null（展示 --） */
+  /** 列表内 ∑ 各模型逐日分段 Credit 估算用量；空列表（周期无调用）= 0；有用量但无任何有效系数返回 null（展示 --） */
   function sumCredit(list) {
     var sum = 0, has = false;
     (list || []).forEach(function (r) {
       var v = modelCreditUsage(r);
       if (v !== null) { has = true; sum += v; }
     });
+    if (!list || !list.length) return 0;
     return has ? sum : null;
   }
 
