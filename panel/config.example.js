@@ -30,12 +30,13 @@ window.APP_CONFIG = {
   autoRefreshMinutes: 5,
 
   // 每日 Credit 限额（可选）：今日用量超出该值，Credit 卡红字提示「已超出」。
-  // 留空（null）表示不限；可在网页首次登录或「配置限额」中填写，例如 100。
-  dailyCreditLimit: null,
+  // 默认 800；留空（null）表示不限，可在网页首次登录或「配置限额」中修改。
+  dailyCreditLimit: 800,
 
-  // 每周 Credit 限额（可选）：本周用量对应额度。
-  weeklyCreditLimit: null,
+  // 每周 Credit 限额（可选）：本周用量对应额度，默认 3500；留空（null）表示不限。
+  weeklyCreditLimit: 3500,
 
-  // 每月 Credit 限额（可选）：本月用量对应额度，同时用于「本月进度条」的月均 pacing，例如 3000。
-  monthlyCreditLimit: null
+  // 每月 Credit 限额（可选）：本月用量对应额度，同时用于「本月进度条」的月均 pacing。
+  // 默认 8000；留空（null）表示不限。
+  monthlyCreditLimit: 8000
 };

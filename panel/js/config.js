@@ -11,9 +11,9 @@
     trendDays: 14,
     theme: 'auto',
     numberStyle: 'wan',
-    dailyCreditLimit: null,
-    weeklyCreditLimit: null,
-    monthlyCreditLimit: null,
+    dailyCreditLimit: 800,
+    weeklyCreditLimit: 3500,
+    monthlyCreditLimit: 8000,
     autoRefreshMinutes: 5
   };
 
